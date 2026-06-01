@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inline Graphics — Quote Builder</title>
+
+  <!-- Tailwind (CDN, no build step) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- React + ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <!-- Babel: lets the browser read JSX directly -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react">
+    const { useState, useMemo } = React;
+
+    /* ---- Inline icons (replaces lucide-react, no install needed) ---- */
+    function Icon({ children, className, style }) {
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round"
+          className={className} style={style}>
+          {children}
+        </svg>
+      );
+    }
+    const Plus = (p) => <Icon {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Icon>;
+    const Trash2 = (p) => <Icon {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></Icon>;
+    const Copy = (p) => <Icon {...p}><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></Icon>;
+    const Check = (p) => <Icon {...p}><polyline points="20 6 9 17 4 12"/></Icon>;
+    const Zap = (p) => <Icon {...p}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></Icon>;
+    const X = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></Icon>;
+
+    const C = {
+      coral: "#F53F5D",
+      navy: "#24324C",
+      cyan: "#31C1E9",
+      yellow: "#F2C635",
+      white: "#FFFFFF",
+      ink: "#0C1424",
+      paper: "#F4F1EA",
+    };
+
+    const FLAG_POLE = {
+      small: { print: 196.83, double: 312.33 },
+      medium: { print: 202.35, double: 317.85 },
+      large: { print: 209.85, double: 325.35 },
+      xlarge: { print: 263.64, double: 379.14 },
+    };
+    const FLAG_ONLY = {
+      small: { print: 102.45, double: 217.95 },
+      medium: { print: 107.97, double: 223.47 },
+      large: { print: 115.47, double: 230.97 },
+      xlarge: { print: 169.26, double: 284.76 },
+    };
+    const TEARDROP_POLE = {
+      small: { print: 196.83, double: 312.33 },
+      medium: { print: 196.83, double: 312.33 },
+      large: { print: 209.85, double: 325.35 },
+      xlarge: { print: 263.64, double: 379.14 },
+    };
+    const TEARDROP_ONLY = {
+      small: { print: 102.45, double: 217.95 },
+      medium: { print: 102.45, double: 217.95 },
+      large: { print: 115.47, double: 230.97 },
+      xlarge: { print: 169.26, double: 284.76 },
+    };
+    const RECT_POLE = {
+      small: { print: 308.85, double: 457.35 },
+      medium: { print: 343.17, double: 491.67 },
+      large: { print: 377.49, double: 525.99 },
+    };
+    const RECT_ONLY = {
+      small: { print: 148.47, double: 296.97 },
+      medium: { print: 182.79, double: 331.29 },
+      large: { print: 217.11, double: 365.61 },
+    };
+
+    const CATEGORIES = {
+      banner: {
+        label: "Banners", type: "sqft",
+        options: [
+          { id: "hd", label: "HD Vinyl Banner", rate: 6.5 },
+          { id: "mesh", label: "Mesh Banner", rate: 5.25 },
+        ],
+      },
+      magnet: {
+        label: "Vehicle Magnets", type: "fixed", note: "Price is per pair",
+        options: [
+          { id: "m1", label: '12" x 18" (pair)', price: 90 },
+          { id: "m2", label: '12" x 24" (pair)', price: 100 },
+          { id: "m3", label: '18" x 24" (pair)', price: 120 },
+        ],
+      },
+      yardsign: {
+        label: "Yard Signs (Coroplast)", type: "tiered",
+        note: "Min order 10. 10-49: $16.50 ea | 50+: $14.00 ea",
+        tiers: [{ min: 50, price: 14.0 }, { min: 10, price: 16.5 }],
+      },
+      flagAngled: {
+        label: "Feather Angled Flag", type: "flag",
+        sizes: [
+          { id: "small", label: "Small 9ft" }, { id: "medium", label: "Medium 10.5ft" },
+          { id: "large", label: "Large 14ft" }, { id: "xlarge", label: "X-Large 18ft" },
+        ], pole: FLAG_POLE, only: FLAG_ONLY,
+      },
+      flagConvex: {
+        label: "Feather Convex Flag", type: "flag",
+        sizes: [
+          { id: "small", label: "Small 9ft" }, { id: "medium", label: "Medium 10.5ft" },
+          { id: "large", label: "Large 14ft" }, { id: "xlarge", label: "X-Large 18ft" },
+        ], pole: FLAG_POLE, only: FLAG_ONLY,
+      },
+      flagTeardrop: {
+        label: "Teardrop Flag", type: "flag",
+        sizes: [
+          { id: "small", label: "Small 7ft" }, { id: "medium", label: "Medium 9ft" },
+          { id: "large", label: "Large 11.2ft" }, { id: "xlarge", label: "X-Large 13.5ft" },
+        ], pole: TEARDROP_POLE, only: TEARDROP_ONLY,
+      },
+      flagRect: {
+        label: "Rectangle Flag", type: "flag",
+        sizes: [
+          { id: "small", label: "Small 8.5ft" }, { id: "medium", label: "Medium 11.8ft" },
+          { id: "large", label: "Large 15ft" },
+        ], pole: RECT_POLE, only: RECT_ONLY,
+      },
+      flagEcono: {
+        label: "Econo Feather Flag (16ft)", type: "fixed",
+        options: [
+          { id: "e1", label: "Flag + Pole - Single Sided", price: 227.7 },
+          { id: "e2", label: "Flag Only - Single Sided", price: 98.97 },
+        ],
+      },
+      poleFlag: {
+        label: "Custom Pole Flag", type: "fixed",
+        options: [
+          { id: "p1", label: 'Flag Only 12"x18" - SS', price: 14.85 },
+          { id: "p2", label: 'Flag Only 12"x18" - DS', price: 89.1 },
+          { id: "p3", label: 'Flag Only 18"x24" - SS', price: 29.7 },
+          { id: "p4", label: 'Flag Only 18"x24" - DS', price: 103.95 },
+          { id: "p5", label: 'Flag Only 24"x36" - SS', price: 59.4 },
+          { id: "p6", label: 'Flag Only 24"x36" - DS', price: 133.65 },
+          { id: "p7", label: 'Flag Only 24"x48" - SS', price: 79.2 },
+          { id: "p8", label: 'Flag Only 24"x48" - DS', price: 153.45 },
+          { id: "p9", label: 'Flag Only 36"x48" - SS', price: 118.8 },
+          { id: "p10", label: 'Flag Only 36"x48" - DS', price: 193.05 },
+          { id: "p11", label: 'Flag Only 36"x72" - SS', price: 178.2 },
+          { id: "p12", label: 'Flag Only 36"x72" - DS', price: 252.45 },
+          { id: "p13", label: 'Flag Only 48"x72" - SS', price: 237.6 },
+          { id: "p14", label: 'Flag Only 48"x72" - DS', price: 311.85 },
+          { id: "p15", label: 'Flag Only 48"x96" - SS', price: 316.8 },
+          { id: "p16", label: 'Flag Only 48"x96" - DS', price: 391.05 },
+          { id: "pp1", label: 'w/ Pole 24"x36" - SS', price: 95.67 },
+          { id: "pp2", label: 'w/ Pole 24"x36" - DS', price: 169.92 },
+          { id: "pb1", label: 'w/ Pole+Bracket 24"x36" - SS', price: 112.17 },
+          { id: "pb2", label: 'w/ Pole+Bracket 24"x36" - DS', price: 186.42 },
+        ],
+      },
+      retractStd: {
+        label: "Standard Retractable Stand", type: "fixed",
+        options: [
+          { id: "s1", label: '23"x66" Stand+Insert - Fabric', price: 171.85 },
+          { id: "s2", label: '23"x66" Stand+Insert - Matte', price: 207.6 },
+          { id: "s3", label: '24"x81" Stand+Insert - Fabric', price: 178.75 },
+          { id: "s4", label: '24"x81" Stand+Insert - Matte', price: 214.5 },
+          { id: "s5", label: '33"x81" Stand+Insert - Fabric', price: 137.48 },
+          { id: "s6", label: '33"x81" Stand+Insert - Matte', price: 173.23 },
+          { id: "s7", label: '33"x81" Black Stand+Insert - Fabric', price: 233.73 },
+          { id: "s8", label: '33"x81" Black Stand+Insert - Matte', price: 269.48 },
+          { id: "s9", label: '47"x81" Stand+Insert - Fabric', price: 280.25 },
+          { id: "s10", label: '47"x81" Stand+Insert - Matte', price: 316.0 },
+          { id: "i1", label: '23"x66" Insert Only - Fabric', price: 116.85 },
+          { id: "i2", label: '33"x81" Insert Only - Fabric', price: 82.48 },
+          { id: "i3", label: '47"x81" Insert Only - Fabric', price: 225.25 },
+        ],
+      },
+      retractDlx: {
+        label: "Deluxe Retractable Stand", type: "fixed",
+        options: [
+          { id: "d1", label: '33"x81" Single Sided - Fabric', price: 206.23 },
+          { id: "d2", label: '33"x81" Single Sided - Matte', price: 247.48 },
+          { id: "d3", label: '33"x81" Double Sided - Fabric', price: 508.9 },
+          { id: "d4", label: '33"x81" Double Sided - Matte', price: 550.15 },
+          { id: "di1", label: '33"x81" SS Insert Only - Fabric', price: 82.48 },
+          { id: "di2", label: '33"x81" DS Insert Only - Fabric', price: 385.15 },
+        ],
+      },
+      canopy: {
+        label: "Canopies & Event Tents", type: "fixed", note: "Starting prices",
+        options: [
+          { id: "c1", label: "10ft Custom Event Tent", price: 684.75 },
+          { id: "c2", label: "Basic Custom Canopy", price: 997 },
+          { id: "c3", label: "Full Custom Event Tent Package", price: 1599 },
+        ],
+      },
+      vinyl: {
+        label: "Vinyl Graphics & Decals", type: "fixed", note: "Starting prices",
+        options: [
+          { id: "v1", label: "Vehicle Lettering", price: 199 },
+          { id: "v2", label: "Trailer Graphics", price: 247 },
+          { id: "v3", label: "Window Perforated Graphics", price: 147 },
+        ],
+      },
+      bizcard: {
+        label: "Business Cards", type: "fixed",
+        options: [
+          { id: "b1", label: "500 cards", price: 85 },
+          { id: "b2", label: "1,000 cards", price: 95 },
+        ],
+      },
+      services: {
+        label: "Services & Packages", type: "fixed", note: "Starting prices - confirm scope",
+        options: [
+          { id: "sv1", label: "Website Design", price: 399 },
+          { id: "sv2", label: "Marketing Package (/mo)", price: 97 },
+          { id: "sv3", label: "Branding Package", price: 500 },
+          { id: "sv4", label: "Contractor Growth Package", price: 5000 },
+        ],
+      },
+    };
+
+    const money = (n) =>
+      "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function LogoMark() {
+      return (
+        <div className="flex items-center gap-3">
+          <div className="leading-none">
+            <div className="font-extrabold tracking-tight" style={{ fontSize: 20 }}>
+              <span style={{ color: C.navy }}>Inline</span>{" "}
+              <span style={{ color: C.coral }}>Graphics</span>
+              <span style={{ color: C.cyan }}>.</span>
+              <span style={{ color: C.yellow }}>.</span>
+              <span style={{ color: C.coral }}>.</span>
+            </div>
+            <div className="tracking-[0.28em] font-bold mt-1" style={{ fontSize: 8, color: C.navy, opacity: 0.6 }}>
+              DESIGN · CREATE · PRINT
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function QuoteTool() {
+      const [items, setItems] = useState([]);
+      const [cat, setCat] = useState("banner");
+      const [copied, setCopied] = useState(false);
+      const [taxRate, setTaxRate] = useState(8.25);
+      const [client, setClient] = useState("");
+      const [opt, setOpt] = useState("");
+      const [qty, setQty] = useState(1);
+      const [w, setW] = useState(2);
+      const [h, setH] = useState(4);
+      const [flagSize, setFlagSize] = useState("medium");
+      const [flagMount, setFlagMount] = useState("pole");
+      const [flagSided, setFlagSided] = useState("print");
+
+      const category = CATEGORIES[cat];
+
+      function resetBuilder(newCat) {
+        const c = CATEGORIES[newCat];
+        setOpt(c.options ? c.options[0].id : "");
+        setQty(newCat === "yardsign" ? 10 : 1);
+        setFlagSize(c.sizes ? c.sizes[0].id : "medium");
+      }
+      function changeCat(v) {
+        setCat(v);
+        resetBuilder(v);
+      }
+
+      function addItem() {
+        let desc = "";
+        let unit = 0;
+        const q = qty;
+        if (category.type === "sqft") {
+          const o = category.options.find((x) => x.id === (opt || category.options[0].id));
+          const sqft = w * h;
+          unit = o.rate * sqft;
+          desc = o.label + " - " + w + "ft x " + h + "ft (" + sqft + " sq ft @ " + money(o.rate) + "/sqft)";
+        } else if (category.type === "fixed") {
+          const o = category.options.find((x) => x.id === (opt || category.options[0].id));
+          unit = o.price;
+          desc = category.label + " - " + o.label;
+        } else if (category.type === "tiered") {
+          const tier = category.tiers.find((t) => q >= t.min) || category.tiers[category.tiers.length - 1];
+          unit = tier.price;
+          desc = category.label + " (" + money(tier.price) + " ea)";
+        } else if (category.type === "flag") {
+          const table = flagMount === "pole" ? category.pole : category.only;
+          const sizeLabel = category.sizes.find((s) => s.id === flagSize).label;
+          unit = table[flagSize][flagSided];
+          const mountLabel = flagMount === "pole" ? "Flag + Pole" : "Flag Only";
+          const sideLabel = flagSided === "double" ? "Double Sided" : "Single Sided";
+          desc = category.label + " - " + sizeLabel + ", " + mountLabel + ", " + sideLabel;
+        }
+        setItems([...items, { id: Date.now() + Math.random(), desc, unit, qty: q, total: unit * q }]);
+      }
+
+      function removeItem(id) {
+        setItems(items.filter((i) => i.id !== id));
+      }
+      function updateQty(id, nq) {
+        const q = Math.max(1, parseInt(nq) || 1);
+        setItems(items.map((i) => (i.id === id ? { ...i, qty: q, total: i.unit * q } : i)));
+      }
+
+      const subtotal = useMemo(() => items.reduce((s, i) => s + i.total, 0), [items]);
+      const tax = subtotal * (taxRate / 100);
+      const grand = subtotal + tax;
+
+      function copyQuote() {
+        let txt = "INLINE GRAPHICS - QUOTE\n(210) 293-5651 | orders@inline.graphics\n";
+        if (client) txt += "Client: " + client + "\n";
+        txt += "Date: " + new Date().toLocaleDateString() + "\n\n";
+        items.forEach((i) => {
+          txt += i.desc + "\n  Qty " + i.qty + " x " + money(i.unit) + " = " + money(i.total) + "\n";
+        });
+        txt += "\nSubtotal: " + money(subtotal) + "\nTax (" + taxRate + "%): " + money(tax) + "\nTOTAL: " + money(grand) + "\n";
+        navigator.clipboard.writeText(txt);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+
+      const labelCls = "text-[11px] font-bold uppercase tracking-wider";
+      const fieldCls = "w-full rounded-xl p-2.5 mt-1 font-medium outline-none transition";
+      const fieldStyle = { background: C.white, border: "2px solid " + C.navy + "15", color: C.navy };
+      const curRate = category.options ? (category.options.find((o) => o.id === (opt || category.options[0].id)) || {}).rate || 0 : 0;
+
+      return (
+        <div className="min-h-screen p-4 md:p-6" style={{ background: C.paper, fontFamily: "Montserrat, Inter, system-ui, sans-serif" }}>
+          <div className="max-w-5xl mx-auto">
+
+            <div className="rounded-2xl overflow-hidden shadow-xl mb-5" style={{ background: C.white }}>
+              <div style={{ height: 8, background: C.navy }} />
+              <div className="p-5 flex items-center justify-between flex-wrap gap-3">
+                <LogoMark />
+                <div className="flex items-center gap-2">
+                  <span style={{ width: 9, height: 9, borderRadius: 99, background: C.coral }} />
+                  <span style={{ width: 9, height: 9, borderRadius: 99, background: C.navy }} />
+                  <span style={{ width: 9, height: 9, borderRadius: 99, background: C.yellow }} />
+                  <span style={{ width: 9, height: 9, borderRadius: 99, background: C.cyan }} />
+                </div>
+              </div>
+              <div className="px-5 pb-5">
+                <h1 className="font-extrabold tracking-tight" style={{ color: C.navy, fontSize: 40, lineHeight: 1 }}>
+                  Quote <span style={{ color: C.coral }}>Builder</span>
+                </h1>
+                <p className="mt-2 font-medium" style={{ color: C.navy, opacity: 0.6, fontSize: 14 }}>
+                  Build a client quote in seconds - pick, configure, copy. Done.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-5">
+
+              <div className="rounded-2xl p-5 shadow-lg" style={{ background: C.white }}>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="rounded-lg p-1.5" style={{ background: C.coral }}>
+                    <Plus className="w-4 h-4" style={{ color: C.white }} />
+                  </div>
+                  <h2 className="font-extrabold uppercase tracking-wide" style={{ color: C.navy, fontSize: 15 }}>Add Item</h2>
+                </div>
+
+                <label className={labelCls} style={{ color: C.navy }}>Category</label>
+                <select value={cat} onChange={(e) => changeCat(e.target.value)} className={fieldCls + " mb-3"} style={fieldStyle}>
+                  {Object.entries(CATEGORIES).map(([k, v]) => (<option key={k} value={k}>{v.label}</option>))}
+                </select>
+
+                {category.note && (
+                  <div className="rounded-lg px-3 py-2 mb-3 text-[12px] font-semibold flex items-center gap-1.5" style={{ background: C.yellow + "33", color: C.navy }}>
+                    <Zap className="w-3.5 h-3.5" style={{ color: C.coral }} /> {category.note}
+                  </div>
+                )}
+
+                {category.type === "sqft" && (
+                  <>
+                    <label className={labelCls} style={{ color: C.navy }}>Material</label>
+                    <select value={opt || category.options[0].id} onChange={(e) => setOpt(e.target.value)} className={fieldCls + " mb-3"} style={fieldStyle}>
+                      {category.options.map((o) => (<option key={o.id} value={o.id}>{o.label} (${o.rate}/sqft)</option>))}
+                    </select>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className={labelCls} style={{ color: C.navy }}>Width (ft)</label>
+                        <input type="number" min="0.5" step="any" value={w} onChange={(e) => setW(parseFloat(e.target.value) || 0)} className={fieldCls} style={fieldStyle} />
+                      </div>
+                      <div>
+                        <label className={labelCls} style={{ color: C.navy }}>Height (ft)</label>
+                        <input type="number" min="0.5" step="any" value={h} onChange={(e) => setH(parseFloat(e.target.value) || 0)} className={fieldCls} style={fieldStyle} />
+                      </div>
+                    </div>
+                    <div className="rounded-lg px-3 py-2 mb-3" style={{ background: C.cyan + "22", color: C.navy }}>
+                      <div className="text-[13px] font-bold">{w * h} sq ft = {money(curRate * w * h)} each</div>
+                      <div className="text-[11px] font-semibold mt-1" style={{ opacity: 0.7 }}>
+                        @ $5.50/sqft = {money(5.5 * w * h)} each
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {category.type === "fixed" && (
+                  <>
+                    <label className={labelCls} style={{ color: C.navy }}>Option</label>
+                    <select value={opt || category.options[0].id} onChange={(e) => setOpt(e.target.value)} className={fieldCls + " mb-3"} style={fieldStyle}>
+                      {category.options.map((o) => (<option key={o.id} value={o.id}>{o.label} - {money(o.price)}</option>))}
+                    </select>
+                  </>
+                )}
+
+                {category.type === "tiered" && (
+                  <div className="rounded-lg px-3 py-2 mb-3 text-[12px] font-semibold" style={{ background: C.cyan + "22", color: C.navy }}>
+                    Unit price applies automatically based on quantity.
+                  </div>
+                )}
+
+                {category.type === "flag" && (
+                  <>
+                    <label className={labelCls} style={{ color: C.navy }}>Size</label>
+                    <select value={flagSize} onChange={(e) => setFlagSize(e.target.value)} className={fieldCls + " mb-3"} style={fieldStyle}>
+                      {category.sizes.map((s) => (<option key={s.id} value={s.id}>{s.label}</option>))}
+                    </select>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className={labelCls} style={{ color: C.navy }}>Mount</label>
+                        <select value={flagMount} onChange={(e) => setFlagMount(e.target.value)} className={fieldCls} style={fieldStyle}>
+                          <option value="pole">Flag + Pole</option>
+                          <option value="only">Flag Only</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className={labelCls} style={{ color: C.navy }}>Sides</label>
+                        <select value={flagSided} onChange={(e) => setFlagSided(e.target.value)} className={fieldCls} style={fieldStyle}>
+                          <option value="print">Single Sided</option>
+                          <option value="double">Double Sided</option>
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-[11px] font-semibold mb-2" style={{ color: C.navy, opacity: 0.5 }}>Prices reflect Ground Stake base.</p>
+                  </>
+                )}
+
+                <label className={labelCls} style={{ color: C.navy }}>Quantity</label>
+                <input type="number" min="1" value={qty} onChange={(e) => setQty(Math.max(1, parseInt(e.target.value) || 1))} className={fieldCls + " mb-4"} style={fieldStyle} />
+
+                <button onClick={addItem}
+                  className="w-full rounded-xl p-3.5 font-extrabold uppercase tracking-wide flex items-center justify-center gap-2 transition hover:scale-[1.02] active:scale-95 shadow-lg"
+                  style={{ background: C.coral, color: C.white, boxShadow: "0 6px 0 " + C.navy }}>
+                  <Plus className="w-5 h-5" /> Add to Quote
+                </button>
+              </div>
+
+              <div className="rounded-2xl p-5 shadow-lg flex flex-col" style={{ background: C.navy }}>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-extrabold uppercase tracking-wide flex items-center gap-2" style={{ color: C.white, fontSize: 15 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 99, background: C.coral, display: "inline-block" }} />
+                    Current Quote
+                  </h2>
+                  {items.length > 0 && (
+                    <button onClick={() => setItems([])} className="text-[11px] font-bold uppercase flex items-center gap-1 transition hover:opacity-80" style={{ color: C.cyan }}>
+                      <X className="w-3 h-3" /> Clear
+                    </button>
+                  )}
+                </div>
+
+                <input value={client} onChange={(e) => setClient(e.target.value)} placeholder="Client name (optional)"
+                  className="w-full rounded-xl p-2.5 mb-3 text-sm font-medium outline-none"
+                  style={{ background: "#ffffff14", border: "2px solid #ffffff22", color: C.white }} />
+
+                <div className="flex-1 overflow-y-auto space-y-2 mb-3 min-h-[140px]">
+                  {items.length === 0 && (
+                    <div className="text-center py-10">
+                      <p className="font-semibold" style={{ color: "#ffffff66", fontSize: 13 }}>No items yet.</p>
+                      <p style={{ color: "#ffffff44", fontSize: 12 }}>Add from the left to start building.</p>
+                    </div>
+                  )}
+                  {items.map((i) => (
+                    <div key={i.id} className="rounded-xl p-3 text-sm" style={{ background: "#ffffff0f", borderLeft: "3px solid " + C.coral }}>
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="flex-1 font-medium" style={{ color: C.white }}>{i.desc}</span>
+                        <button onClick={() => removeItem(i.id)} className="transition hover:scale-110" style={{ color: "#ffffff66" }}>
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="flex justify-between items-center mt-2">
+                        <div className="flex items-center gap-2" style={{ color: "#ffffff99" }}>
+                          <span className="text-xs font-semibold">QTY</span>
+                          <input type="number" min="1" value={i.qty} onChange={(e) => updateQty(i.id, e.target.value)}
+                            className="w-14 rounded-lg p-1 text-center text-sm font-bold outline-none"
+                            style={{ background: "#ffffff1a", border: "1px solid #ffffff22", color: C.white }} />
+                          <span className="text-xs">x {money(i.unit)}</span>
+                        </div>
+                        <span className="font-extrabold" style={{ color: C.yellow }}>{money(i.total)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-xl p-4 space-y-2" style={{ background: "#ffffff0a" }}>
+                  <div className="flex justify-between text-sm font-semibold" style={{ color: "#ffffffcc" }}>
+                    <span>Subtotal</span><span>{money(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm font-semibold" style={{ color: "#ffffffcc" }}>
+                    <span className="flex items-center gap-1">
+                      Tax
+                      <input type="number" step="0.01" value={taxRate} onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
+                        className="w-14 rounded-lg p-1 text-center text-xs font-bold outline-none"
+                        style={{ background: "#ffffff1a", border: "1px solid #ffffff22", color: C.white }} />%
+                    </span>
+                    <span>{money(tax)}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline pt-2 mt-1" style={{ borderTop: "2px solid #ffffff1a" }}>
+                    <span className="font-extrabold uppercase tracking-wide" style={{ color: C.white, fontSize: 14 }}>Total</span>
+                    <span className="font-extrabold" style={{ color: C.coral, fontSize: 28 }}>{money(grand)}</span>
+                  </div>
+                </div>
+
+                <button onClick={copyQuote} disabled={items.length === 0}
+                  className="mt-4 w-full rounded-xl p-3.5 font-extrabold uppercase tracking-wide flex items-center justify-center gap-2 transition hover:scale-[1.02] active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                  style={{ background: copied ? C.cyan : C.yellow, color: C.navy }}>
+                  {copied ? (<><Check className="w-5 h-5" /> Copied!</>) : (<><Copy className="w-5 h-5" /> Copy Quote</>)}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl px-4 py-3 text-center" style={{ background: C.white }}>
+              <p className="text-[11px] font-semibold" style={{ color: C.navy, opacity: 0.55 }}>
+                Flag prices reflect Ground Stake base - alternate bases priced separately. "Starting at" service prices are estimates; confirm scope.
+                &nbsp;|&nbsp; (210) 293-5651 | orders@inline.graphics
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<QuoteTool />);
+  </script>
+</body>
+</html>
