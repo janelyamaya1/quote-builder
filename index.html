@@ -451,7 +451,7 @@
                 )}
 
                 <label className={labelCls} style={{ color: C.navy }}>Quantity</label>
-                <input type="number" min="1" value={qty} onChange={(e) => setQty(Math.max(1, parseInt(e.target.value) || 1))} className={fieldCls + " mb-4"} style={fieldStyle} />
+                <input type="number" min={cat === "yardsign" ? 10 : 1} step={cat === "yardsign" ? 10 : 1} value={qty} onChange={(e) => setQty(Math.max(1, parseInt(e.target.value) || 1))} className={fieldCls + " mb-4"} style={fieldStyle} />
 
                 <button onClick={addItem}
                   className="w-full rounded-xl p-3.5 font-extrabold uppercase tracking-wide flex items-center justify-center gap-2 transition hover:scale-[1.02] active:scale-95 shadow-lg"
